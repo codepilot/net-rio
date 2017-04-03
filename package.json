@@ -1,0 +1,19 @@
+{
+  "name": "net-rio",
+  "version": "0.0.1",
+  "description": "NodeJS net, for using high speed Windows Registered I/O",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codepilot/net-rio.git"
+  },
+  "author": "Daniel Kluss",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/codepilot/net-rio/issues"
+  },
+  "homepage": "https://github.com/codepilot/net-rio#readme"
+}
