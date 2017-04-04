@@ -1,6 +1,18 @@
 #pragma once
 
+
+#include "msGuids.hpp"
+
 namespace Sockets {
+
+
+
+
+
+
+
+
+
 	template<typename sig>
 	int getExtFuncPtr(SOCKET sock, DWORD dwIoControlCode, LPGUID guid, sig *ret) {
 		DWORD dwBytes{ 0 };
@@ -17,6 +29,58 @@ namespace Sockets {
 			nullptr,
 			nullptr);
 	}
+
+	template<typename sig>
+	sig retExtFuncPtr(SOCKET sock, DWORD dwIoControlCode, const GUID *guid) {
+		DWORD dwBytes{ 0 };
+		DWORD sizeofInput = sizeof(GUID);
+		sig ret{ nullptr };
+		DWORD sizeofOutput = sizeof(ret);
+		const auto size =  WSAIoctl(
+			sock,
+			dwIoControlCode,
+			(LPVOID)guid,
+			sizeofInput,
+			&ret,
+			sizeofOutput,
+			&dwBytes,
+			nullptr,
+			nullptr);
+		if (!ret) {
+			const auto lastError = WSAGetLastError();
+			printf("WSAIoctl lastError: %d\n", lastError);
+			getchar();
+		}
+		return ret;
+	}
+
+
+	class GuidMsTcpIp {
+	public:
+		__m128i m128_TRANSMITFILE;
+		GUID GUID_WSAID_TRANSMITFILE;
+		GUID GUID_WSAID_ACCEPTEX;
+		GUID GUID_WSAID_GETACCEPTEXSOCKADDRS;
+		GUID GUID_WSAID_TRANSMITPACKETS;
+		GUID GUID_WSAID_CONNECTEX;
+		GUID GUID_WSAID_DISCONNECTEX;
+		GUID GUID_WSAID_WSARECVMSG;
+		GUID GUID_WSAID_WSASENDMSG;
+		GUID GUID_WSAID_WSAPOLL;
+		GUID GUID_WSAID_MULTIPLE_RIO;
+		GuidMsTcpIp() : m128_TRANSMITFILE{ guid_to_m128i<0xb5367df0,0xcbac,0x11cf, 0x95,0xca,0x00,0x80,0x5f,0x48,0xa1,0x92>() } {
+			GUID_WSAID_TRANSMITFILE = WSAID_TRANSMITFILE;
+			GUID_WSAID_ACCEPTEX = WSAID_ACCEPTEX;
+			GUID_WSAID_GETACCEPTEXSOCKADDRS = WSAID_GETACCEPTEXSOCKADDRS;
+			GUID_WSAID_TRANSMITPACKETS = WSAID_TRANSMITPACKETS;
+			GUID_WSAID_CONNECTEX = WSAID_CONNECTEX;
+			GUID_WSAID_DISCONNECTEX = WSAID_DISCONNECTEX;
+			GUID_WSAID_WSARECVMSG = WSAID_WSARECVMSG;
+			GUID_WSAID_WSASENDMSG = WSAID_WSASENDMSG;
+			GUID_WSAID_WSAPOLL = WSAID_WSAPOLL;
+			GUID_WSAID_MULTIPLE_RIO = WSAID_MULTIPLE_RIO;
+		}
+	};
 
 	class XMIT_PACKETS : public std::vector<TRANSMIT_PACKETS_ELEMENT> {
 	public:
@@ -61,6 +125,7 @@ namespace Sockets {
 			dst->dwElFlags |= TP_ELEMENT_EOP;
 		}
 	};
+
 	class Win10SocketLib {
 	public:
 		WSADATA wsaData{ 0 };
@@ -80,58 +145,101 @@ namespace Sockets {
 			WSACleanup();
 		}
 	};
-	template<
-		int intAddressFamily, /*
-			AF_INET The Internet Protocol version 4 (IPv4) address family.
-			AF_INET6 The Internet Protocol version 6 (IPv6) address family.
-		*/
-		int intType, /*
-			SOCK_STREAM Transmission Control Protocol (TCP)
-			SOCK_DGRAM User Datagram Protocol (UDP) */
-		DWORD dwFlags /*
-			WSA_FLAG_OVERLAPPED,
-			WSA_FLAG_MULTIPOINT_C_ROOT,
-			WSA_FLAG_MULTIPOINT_C_LEAF,
-			WSA_FLAG_MULTIPOINT_D_ROOT,
-			WSA_FLAG_MULTIPOINT_D_LEAF,
-			WSA_FLAG_ACCESS_SYSTEM_SECURITY,
-			WSA_FLAG_NO_HANDLE_INHERIT,
-			WSA_FLAG_REGISTERED_IO */
-	> class Win10Socket {
-		SOCKET sock{ INVALID_SOCKET };
-		static GUID GUID_WSAID_TRANSMITFILE;
-		static GUID GUID_WSAID_ACCEPTEX;
-		static GUID GUID_WSAID_GETACCEPTEXSOCKADDRS;
-		static GUID GUID_WSAID_TRANSMITPACKETS;
-		static GUID GUID_WSAID_CONNECTEX;
-		static GUID GUID_WSAID_DISCONNECTEX;
-		static GUID GUID_WSAID_WSARECVMSG;
-		static GUID GUID_WSAID_WSASENDMSG;
-		static GUID GUID_WSAID_WSAPOLL;
-		static GUID GUID_WSAID_MULTIPLE_RIO;
 
+	class MsSockFuncPtrs {
 	public:
+		LPFN_ACCEPTEX AcceptEx{ nullptr };
+		LPFN_CONNECTEX ConnectEx{ nullptr };
+		LPFN_DISCONNECTEX DisconnectEx{ nullptr };
+		LPFN_GETACCEPTEXSOCKADDRS GetAcceptExSockaddrs{ nullptr };
+		LPFN_TRANSMITFILE TransmitFile{ nullptr };
+		LPFN_TRANSMITPACKETS TransmitPackets{ nullptr };
+		LPFN_WSARECVMSG WSARecvMsg{ nullptr };
+		LPFN_WSASENDMSG WSASendMsg{ nullptr };
+	//LPFN_WSAPOLL WSAPoll{ nullptr };
+		MsSockFuncPtrs(SOCKET sock, GuidMsTcpIp &wsaId) :
+			//WSAPoll{ retExtFuncPtr<LPFN_WSAPOLL>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_WSAPOLL) }
+			AcceptEx{ retExtFuncPtr<LPFN_ACCEPTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_ACCEPTEX) },
+			ConnectEx{ retExtFuncPtr<LPFN_CONNECTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_CONNECTEX) },
+			DisconnectEx{ retExtFuncPtr<LPFN_DISCONNECTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_DISCONNECTEX) },
+			GetAcceptExSockaddrs{ retExtFuncPtr<LPFN_GETACCEPTEXSOCKADDRS>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_GETACCEPTEXSOCKADDRS) },
+			TransmitFile{ retExtFuncPtr<LPFN_TRANSMITFILE>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_TRANSMITFILE) },
+			TransmitPackets{ retExtFuncPtr<LPFN_TRANSMITPACKETS>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_TRANSMITPACKETS) },
+			WSARecvMsg{ retExtFuncPtr<LPFN_WSARECVMSG>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_WSARECVMSG) },
+			WSASendMsg{ retExtFuncPtr<LPFN_WSASENDMSG>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, Sockets::m128_WSASENDMSG) }
+		 {
+
+		}
+	};
+
+	class MsSockFuncs {
+	public:
+		GuidMsTcpIp wsaId;
+		MsSockFuncPtrs funcPtrs;
+
+		MsSockFuncs(SOCKET sock) : wsaId{}, funcPtrs{sock, wsaId } {
+
+		}
+	};
+
+	class GenericWin10Socket {
+	public:
+		SOCKET sock{ INVALID_SOCKET };
+		MsSockFuncs msSockFuncs;
+		static GuidMsTcpIp GUID_WSAID;
+
+		RIO_EXTENSION_FUNCTION_TABLE rioTable{
+			sizeof(RIO_EXTENSION_FUNCTION_TABLE),
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr };
+
+		LPFN_RIORECEIVE RIOReceive;
+		LPFN_RIORECEIVEEX RIOReceiveEx;
+		LPFN_RIOSEND RIOSend;
+		LPFN_RIOSENDEX RIOSendEx;
+		LPFN_RIOCLOSECOMPLETIONQUEUE RIOCloseCompletionQueue;
+		LPFN_RIOCREATECOMPLETIONQUEUE RIOCreateCompletionQueue;
+		LPFN_RIOCREATEREQUESTQUEUE RIOCreateRequestQueue;
+		LPFN_RIODEQUEUECOMPLETION RIODequeueCompletion;
+		LPFN_RIODEREGISTERBUFFER RIODeregisterBuffer;
+		LPFN_RIONOTIFY RIONotify;
+		LPFN_RIOREGISTERBUFFER RIORegisterBuffer;
+		LPFN_RIORESIZECOMPLETIONQUEUE RIOResizeCompletionQueue;
+		LPFN_RIORESIZEREQUESTQUEUE RIOResizeRequestQueue;
+
 		SOCKET getSocket() { return sock; }
 		HANDLE getHandle() { return reinterpret_cast<HANDLE>(sock); }
 		ULONG_PTR getSocketNumber() { return sock; }
-		Win10Socket() : sock{ WSASocketW(PF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, dwFlags) } {
+		GenericWin10Socket(int intAddressFamily, int intType, int intProtocol, DWORD dwFlags) : sock{ WSASocketW(intAddressFamily, intType, intProtocol, 0, 0, dwFlags) }, msSockFuncs{ sock } {
 			SetFileCompletionNotificationModes(reinterpret_cast<HANDLE>(sock), FILE_SKIP_SET_EVENT_ON_HANDLE);
-		//printf("ND(%u) SND(%u) RCV(%u) ", get_TCP_NODELAY(), get_SO_SNDBUF(), get_SO_RCVBUF());
+			//printf("ND(%u) SND(%u) RCV(%u) ", get_TCP_NODELAY(), get_SO_SNDBUF(), get_SO_RCVBUF());
 			set_TCP_NODELAY(TRUE);
 			set_SO_SNDBUF(0);
 			set_SO_RCVBUF(0);
-		//printf("ND(%u) SND(%u) RCV(%u)\n", get_TCP_NODELAY(), get_SO_SNDBUF(), get_SO_RCVBUF());
+			//printf("ND(%u) SND(%u) RCV(%u)\n", get_TCP_NODELAY(), get_SO_SNDBUF(), get_SO_RCVBUF());
 
 			{
-				getExtFuncPtr<LPFN_ACCEPTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_ACCEPTEX, &AcceptEx);
-				getExtFuncPtr<LPFN_CONNECTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_CONNECTEX, &ConnectEx);
-				getExtFuncPtr<LPFN_DISCONNECTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_DISCONNECTEX, &DisconnectEx);
-				getExtFuncPtr<LPFN_TRANSMITFILE>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_TRANSMITFILE, &TransmitFile);
-				getExtFuncPtr<LPFN_TRANSMITPACKETS>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_TRANSMITPACKETS, &TransmitPackets);
-				getExtFuncPtr<LPFN_WSASENDMSG>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_WSASENDMSG, &WSASendMsg);
-				getExtFuncPtr<LPFN_WSAPOLL>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_WSAPOLL, &WSAPoll);
+#if 0
+				getExtFuncPtr<LPFN_ACCEPTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_ACCEPTEX, &AcceptEx);
+				getExtFuncPtr<LPFN_CONNECTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_CONNECTEX, &ConnectEx);
+				getExtFuncPtr<LPFN_DISCONNECTEX>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_DISCONNECTEX, &DisconnectEx);
+				getExtFuncPtr<LPFN_TRANSMITFILE>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_TRANSMITFILE, &TransmitFile);
+				getExtFuncPtr<LPFN_TRANSMITPACKETS>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_TRANSMITPACKETS, &TransmitPackets);
+				getExtFuncPtr<LPFN_WSASENDMSG>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_WSASENDMSG, &WSASendMsg);
+				getExtFuncPtr<LPFN_WSAPOLL>(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_WSAPOLL, &WSAPoll);
 				if (WSA_FLAG_REGISTERED_IO == dwFlags) {
-					getExtFuncPtr<RIO_EXTENSION_FUNCTION_TABLE>(sock, SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER, &GUID_WSAID_MULTIPLE_RIO, &rioTable);
+					getExtFuncPtr<RIO_EXTENSION_FUNCTION_TABLE>(sock, SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER, &GUID_WSAID.GUID_WSAID_MULTIPLE_RIO, &rioTable);
 					RIOReceive = rioTable.RIOReceive;
 					RIOReceiveEx = rioTable.RIOReceiveEx;
 					RIOSend = rioTable.RIOSend;
@@ -147,6 +255,7 @@ namespace Sockets {
 					RIOResizeRequestQueue = rioTable.RIOResizeRequestQueue;
 
 				}
+#endif
 			}
 
 			{
@@ -166,9 +275,9 @@ namespace Sockets {
 				//printf("InBuffer: %d, OutBuffer: %d, dwBytes: %d, err: %d\n",
 				//	InBuffer, OutBuffer, dwBytes, err);
 			}
-			
 		}
-		~Win10Socket() {
+
+		~GenericWin10Socket() {
 			if (INVALID_SOCKET == sock) {
 				return;
 			}
@@ -193,6 +302,18 @@ namespace Sockets {
 		void set_SO_RCVBUF(DWORD v) { setsockopt_DWORD(SOL_SOCKET, SO_RCVBUF, v); }
 		void set_SO_SNDBUF(DWORD v) { setsockopt_DWORD(SOL_SOCKET, SO_SNDBUF, v); }
 		void set_TCP_NODELAY(DWORD v) { setsockopt_DWORD(IPPROTO_TCP, TCP_NODELAY, v); }
+	};
+
+	template<int intAddressFamily, int intType, int intProtocol, DWORD dwFlags> class Win10Socket: public GenericWin10Socket {
+	public:
+
+		Win10Socket() : GenericWin10Socket{ intAddressFamily, intType, IPPROTO_TCP, dwFlags } {
+
+			
+		}
+		~Win10Socket() { }
+
+
 
 #if 0
 		int _setsockopt() {
@@ -293,44 +414,7 @@ namespace Sockets {
 				0);
 		}
 
-		LPFN_ACCEPTEX AcceptEx{ nullptr };
-		LPFN_CONNECTEX ConnectEx{ nullptr };
-		LPFN_DISCONNECTEX DisconnectEx{ nullptr };
-		LPFN_GETACCEPTEXSOCKADDRS GetAcceptExSockaddrs{ nullptr };
-		LPFN_TRANSMITFILE TransmitFile{ nullptr };
-		LPFN_TRANSMITPACKETS TransmitPackets{ nullptr };
-		LPFN_WSARECVMSG WSARecvMsg{ nullptr };
-		LPFN_WSASENDMSG WSASendMsg{ nullptr };
-		LPFN_WSAPOLL WSAPoll{ nullptr };
-		RIO_EXTENSION_FUNCTION_TABLE rioTable{
-			sizeof(RIO_EXTENSION_FUNCTION_TABLE),
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr };
 
-		LPFN_RIORECEIVE RIOReceive;
-		LPFN_RIORECEIVEEX RIOReceiveEx;
-		LPFN_RIOSEND RIOSend;
-		LPFN_RIOSENDEX RIOSendEx;
-		LPFN_RIOCLOSECOMPLETIONQUEUE RIOCloseCompletionQueue;
-		LPFN_RIOCREATECOMPLETIONQUEUE RIOCreateCompletionQueue;
-		LPFN_RIOCREATEREQUESTQUEUE RIOCreateRequestQueue;
-		LPFN_RIODEQUEUECOMPLETION RIODequeueCompletion;
-		LPFN_RIODEREGISTERBUFFER RIODeregisterBuffer;
-		LPFN_RIONOTIFY RIONotify;
-		LPFN_RIOREGISTERBUFFER RIORegisterBuffer;
-		LPFN_RIORESIZECOMPLETIONQUEUE RIOResizeCompletionQueue;
-		LPFN_RIORESIZEREQUESTQUEUE RIOResizeRequestQueue;
 
 
 		BOOL disconnectReuse(LPOVERLAPPED lpOverlapped) {
@@ -554,14 +638,14 @@ namespace Sockets {
 					SIO_UDP_CONNRESET
 #endif
 		};
-			typedef Win10Socket<AF_INET, SOCK_STREAM, WSA_FLAG_OVERLAPPED> OvTcp4;
-			typedef Win10Socket<AF_INET6, SOCK_STREAM, WSA_FLAG_OVERLAPPED> OvTcp6;
-			typedef Win10Socket<AF_INET, SOCK_DGRAM, WSA_FLAG_OVERLAPPED> OvUdp4;
-			typedef Win10Socket<AF_INET6, SOCK_DGRAM, WSA_FLAG_OVERLAPPED> OvUdp6;
-			typedef Win10Socket<AF_INET, SOCK_STREAM, WSA_FLAG_REGISTERED_IO> RioTcp4;
-			typedef Win10Socket<AF_INET6, SOCK_STREAM, WSA_FLAG_REGISTERED_IO> RioTcp6;
-			typedef Win10Socket<AF_INET, SOCK_DGRAM, WSA_FLAG_REGISTERED_IO> RioUdp4;
-			typedef Win10Socket<AF_INET6, SOCK_DGRAM, WSA_FLAG_REGISTERED_IO> RioUdp6;
+			typedef Win10Socket<AF_INET, SOCK_STREAM, IPPROTO_TCP, WSA_FLAG_OVERLAPPED> OvTcp4;
+			typedef Win10Socket<AF_INET6, SOCK_STREAM, IPPROTO_TCP, WSA_FLAG_OVERLAPPED> OvTcp6;
+			typedef Win10Socket<AF_INET, SOCK_DGRAM, IPPROTO_UDP, WSA_FLAG_OVERLAPPED> OvUdp4;
+			typedef Win10Socket<AF_INET6, SOCK_DGRAM, IPPROTO_UDP, WSA_FLAG_OVERLAPPED> OvUdp6;
+			typedef Win10Socket<AF_INET, SOCK_STREAM, IPPROTO_TCP, WSA_FLAG_REGISTERED_IO> RioTcp4;
+			typedef Win10Socket<AF_INET6, SOCK_STREAM, IPPROTO_TCP, WSA_FLAG_REGISTERED_IO> RioTcp6;
+			typedef Win10Socket<AF_INET, SOCK_DGRAM, IPPROTO_UDP, WSA_FLAG_REGISTERED_IO> RioUdp4;
+			typedef Win10Socket<AF_INET6, SOCK_DGRAM, IPPROTO_UDP, WSA_FLAG_REGISTERED_IO> RioUdp6;
 
 	//others
 	//	GetAddrInfoEx

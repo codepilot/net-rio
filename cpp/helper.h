@@ -14,6 +14,30 @@ void setMethod(v8::Handle<v8::Object>& classObj, std::wstring&& funcName, const 
 }
 
 
+template<class T>
+void setMethod(v8::Handle<v8::Object>& classObj, v8::Eternal<v8::String>& eternalFuncName, const T&& callback) {
+	v8::Isolate* isolate = Isolate::GetCurrent();
+	v8::HandleScope scope(isolate);
+	auto funcTemplate = FunctionTemplate::New(isolate, static_cast<FunctionCallback>(callback));
+	funcTemplate->SetClassName(eternalFuncName.Get(isolate));
+	auto func = funcTemplate->GetFunction();
+	func->SetName(eternalFuncName.Get(isolate));
+	classObj->Set(eternalFuncName.Get(isolate), func);
+}
+
+
+template<class T>
+void setMethod(v8::Handle<v8::Object>& classObj, v8::Eternal<v8::String>&& eternalFuncName, const T&& callback) {
+	v8::Isolate* isolate = Isolate::GetCurrent();
+	v8::HandleScope scope(isolate);
+	auto funcTemplate = FunctionTemplate::New(isolate, static_cast<FunctionCallback>(callback));
+	funcTemplate->SetClassName(eternalFuncName.Get(isolate));
+	auto func = funcTemplate->GetFunction();
+	func->SetName(eternalFuncName.Get(isolate));
+	classObj->Set(eternalFuncName.Get(isolate), func);
+}
+
+
 template <typename T> double ptr_to_double(T ptr) { return static_cast<double>(reinterpret_cast<int64_t>(ptr)); }
 template <typename T> T double_to_ptr(double dbl) { return reinterpret_cast<T>(static_cast<int64_t>(dbl)); }
 template <typename SrcType, typename DstType> DstType ptr_to_ptr(SrcType srcPtr) { return reinterpret_cast<DstType>(srcPtr); }
@@ -147,7 +171,25 @@ void setPrototypeMethod(v8::Handle<v8::FunctionTemplate>& recv, std::string&& fu
 	recv->PrototypeTemplate()->Set(es_temp.Get(isolate), funcTemplate);
 }
 
+template<class T>
+void setPrototypeMethod(v8::Handle<v8::FunctionTemplate>& recv, v8::Eternal<v8::String>& eternalFuncName, const T&& callback) {
+	v8::Isolate* isolate = v8::Isolate::GetCurrent(); v8::HandleScope scope(isolate);
+	v8::Local<v8::Signature> s = v8::Signature::New(isolate, recv);
+	auto funcTemplate = v8::FunctionTemplate::New(isolate, static_cast<v8::FunctionCallback>(callback), v8::Local<v8::Value>(), s);
+	funcTemplate->SetClassName(eternalFuncName.Get(isolate));
+	auto func = funcTemplate->GetFunction();
+	func->SetName(eternalFuncName.Get(isolate));
+	recv->PrototypeTemplate()->Set(eternalFuncName.Get(isolate), funcTemplate);
+}
+
+#if 0
 #define setPrototypeThisMethod(recv, funcName) \
 		setPrototypeMethod(recv, #funcName, [](const v8::FunctionCallbackInfo<v8::Value>& args) { \
 			ObjectWrap::Unwrap<Adapter>(args.Holder())->funcName(args); \
 		});
+#else
+#define setPrototypeThisMethod(clsname, recv, funcName, methodName) \
+		setPrototypeMethod(recv, #funcName, [](const v8::FunctionCallbackInfo<v8::Value>& args) { \
+			ObjectWrap::Unwrap<clsname>(args.Holder())->methodName(args); \
+		});
+#endif

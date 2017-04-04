@@ -8,16 +8,61 @@ function loadBinding() {
 	}
 }
 
-//const binding = loadBinding();
+const binding = loadBinding();
+//console.log('binding', binding);
 const dgram = require('dgram');
 
 const EventEmitter = require('events');
 
+const wsConsts = {
+	AF_INET: 2,
+	AF_INET6: 23,
+	SOCK_STREAM: 1,
+	SOCK_DGRAM: 2,
+	IPPROTO_TCP: 6,
+	IPPROTO_UDP: 17,
+	WSA_FLAG_OVERLAPPED: 0x01,
+	WSA_FLAG_REGISTERED_IO: 0x100
+};
+
+const type_to_ws_af = { udp4: wsConsts.AF_INET, udp6: wsConsts.AF_INET6 };
+const type_to_ws_type = { udp4: wsConsts.SOCK_DGRAM, udp6: wsConsts.SOCK_DGRAM };
+const type_to_ws_protocol = { udp4: wsConsts.IPPROTO_UDP, udp6: wsConsts.IPPROTO_UDP };
+const type_to_ws_flags = { iocp: wsConsts.WSA_FLAG_OVERLAPPED, rio: wsConsts.WSA_FLAG_REGISTERED_IO };
+
 class dgramSocket extends EventEmitter {
 	constructor(...args) {
 		super();
-		this.socket = dgram.createSocket(...args);
 
+		switch (typeof args[0]) {
+			case 'string':
+				this.socket = new binding.UdpSocket(
+					type_to_ws_af[args[0]],
+					type_to_ws_type[args[0]],
+					type_to_ws_protocol[args[0]],
+					type_to_ws_flags.iocp);
+
+				break;
+
+			case 'object':
+				this.socket = new binding.UdpSocket(
+					type_to_ws_af[args[0].type],
+					type_to_ws_type[args[0].type],
+					type_to_ws_protocol[args[0].type],
+					type_to_ws_flags[args[0].io]);
+
+				break;
+
+			default:
+				throw new TypeError('Expected a string or an object');
+		}
+
+	//console.log(this.socket);
+	//console.log(Object.getPrototypeOf(this.socket));
+	//console.log(this.socket.bind);
+
+	//this.socket = dgram.createSocket(type);
+		/*
 		this.socket.on('close', (...args) => {
 			console.log('passed close', args);
 			this.emit('close', ...args);
@@ -51,6 +96,7 @@ class dgramSocket extends EventEmitter {
 				console.log(this.eventNames());
 			})
 		});
+		*/
 	}
 
 	addMembership(...args) { //multicastAddress, multicastInterface
@@ -59,14 +105,54 @@ class dgramSocket extends EventEmitter {
 	address(...args) {
 		return this.socket.address(...args);
 	}
+	bindSync(...args) {
+		const port = args[0];
+		const strAddr = args[1];
+		const addrParts = strAddr.split('.').map((v, i, a)=> parseInt(v, 10));
+		const sockAddr = Buffer.alloc(128);
+		sockAddr.writeUInt16LE(wsConsts.AF_INET, 0);
+		sockAddr.writeUInt16BE(args[0], 2); //port
+		sockAddr[4] = addrParts[0];
+		sockAddr[5] = addrParts[1];
+		sockAddr[6] = addrParts[2];
+		sockAddr[7] = addrParts[3];
+		const ret = this.socket.bindSync(sockAddr);
+		console.log('bind ret', ret);
+		return ret;
+	}	
+	
+	bindAsync(...args) {
+		const port = args[0];
+		const strAddr = args[1];
+		const addrParts = strAddr.split('.').map((v, i, a)=> parseInt(v, 10));
+		const sockAddr = Buffer.alloc(128);
+		sockAddr.writeUInt16LE(wsConsts.AF_INET, 0);
+		sockAddr.writeUInt16BE(args[0], 2); //port
+		sockAddr[4] = addrParts[0];
+		sockAddr[5] = addrParts[1];
+		sockAddr[6] = addrParts[2];
+		sockAddr[7] = addrParts[3];
+		const ret = this.socket.bindIocp(sockAddr);
+		console.log('bind ret', ret);
+		return ret;
+	}
+	
 	bind(...args) {
-		return this.socket.bind(...args);
-		/*
-		setImmediate(() => {
+		const port = args[0];
+		const strAddr = args[1];
+		const addrParts = strAddr.split('.').map((v, i, a)=> parseInt(v, 10));
+		const sockAddr = Buffer.alloc(128);
+		sockAddr.writeUInt16LE(wsConsts.AF_INET, 0);
+		sockAddr.writeUInt16BE(args[0], 2); //port
+		sockAddr[4] = addrParts[0];
+		sockAddr[5] = addrParts[1];
+		sockAddr[6] = addrParts[2];
+		sockAddr[7] = addrParts[3];
+		const ret = this.socket.bindIocp(sockAddr).then((...args)=>{
 			this.emit('listening');
 		});
-		*/
-	}
+		console.log('bind ret', ret);
+	}	
 //bind(port, address, callback)
 //bind(options, callback)
 	close(...args) {//callback

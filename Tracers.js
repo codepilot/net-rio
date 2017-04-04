@@ -67,10 +67,12 @@ Tracers.DgramSocketTracer = class DgramSocketTracer {
 
 	on_error(err) {
 		console.log(`${this.options.prefix}.on_err: `, err);
+		this.options.emitter.close();
 	}
 
 	on_listening() {
-		console.log(`${this.options.prefix}.on_listening: `);
+		const address = this.options.emitter.address();
+		console.log(`${this.options.prefix}.on_listening: ${address.address}:${address.port}`);
 	}
 
 }

@@ -164,5 +164,5 @@ using node::AtExit;
 
 #include <tchar.h>
 
-
+#include <mstcpip.h>
 #include "ClsSockets.h"

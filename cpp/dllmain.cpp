@@ -11,6 +11,12 @@ namespace EternalStrings {
 #undef createEStr
 }
 
+#pragma comment(lib, 	"Ws2_32.lib")
+
+#include "UdpSocket.hpp"
+
+v8::Eternal<v8::Function> UdpSocket::constructor;
+Sockets::GuidMsTcpIp UdpSocket::guidMsTcpIP;
 
 namespace {
 	BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
@@ -26,6 +32,7 @@ namespace {
 	}
 
 	void Init(v8::Local<v8::Object> exports) {
+		Sockets::Win10SocketLib win10SocketLib;
 	//Privilege(TEXT("SeLockMemoryPrivilege"), TRUE);
 	//Privilege(TEXT("SeCreateGlobalPrivilege"), TRUE);
 
@@ -48,12 +55,15 @@ namespace {
 		});
 #endif
 
-		v8::Local<v8::Object> dgram{ v8::Object::New(isolate) };
+		UdpSocket::Init(exports);
+#if 0
+		ThreadPromise::Init(target);
+		setMethod(target, L"CreateThreadPromise", [](const v8::FunctionCallbackInfo<v8::Value>& info) {
+			ThreadPromise::NewInstance(info);
+		});
+#endif
 
-		setELitValue(exports, dgram, dgram);
-
-		/*
-		
+#if 0
 
 		Object socket
 		createSocket
@@ -65,13 +75,13 @@ namespace {
 		
 		*/
 
-		setMethod(dgram, L"createSocketUdp4", [](const v8::FunctionCallbackInfo<v8::Value>& info) {
+		/*setMethod(dgram, L"createSocketUdp", [](const v8::FunctionCallbackInfo<v8::Value>& info) {
 			v8::Isolate* isolate = v8::Isolate::GetCurrent();
 			v8::HandleScope scope(isolate);
-			if (info.Length() < 1) {
-				info.GetReturnValue().SetUndefined();
-				return;
-			}
+		//Sockets::RioUdp4
+			/*
+			if (info.Length() < 3) { info.GetReturnValue().SetUndefined(); return; }
+
 			auto str_udp4 = EternalStrings::es_udp4.Get(isolate);
 			auto str_udp6 = EternalStrings::es_udp6.Get(isolate);
 			auto str_type = EternalStrings::es_type.Get(isolate);
@@ -104,48 +114,7 @@ namespace {
 			}
 			info.GetReturnValue().SetNull();
 			return;
-		});
-
-		setMethod(dgram, L"createSocketUdp6", [](const v8::FunctionCallbackInfo<v8::Value>& info) {
-			v8::Isolate* isolate = v8::Isolate::GetCurrent();
-			v8::HandleScope scope(isolate);
-			if (info.Length() < 1) {
-				info.GetReturnValue().SetUndefined();
-				return;
-			}
-			auto str_udp4 = EternalStrings::es_udp4.Get(isolate);
-			auto str_udp6 = EternalStrings::es_udp6.Get(isolate);
-			auto str_type = EternalStrings::es_type.Get(isolate);
-			if (info[0]->IsString()) {
-				auto argType = info[0]->ToString();
-				if (argType->StrictEquals(str_udp4)) {
-					info.GetReturnValue().Set(str_udp4);
-					return;
-				}
-				else if (argType->StrictEquals(str_udp6)) {
-					info.GetReturnValue().Set(str_udp6);
-					return;
-				}
-			}
-			else if (info[0]->IsObject()) {
-				Local<Context> context = isolate->GetCurrentContext();
-				auto argOptions = info[0]->ToObject();
-				if (!argOptions->HasOwnProperty(context, str_type).ToChecked()) {
-					info.GetReturnValue().SetUndefined();
-					return;
-				}
-				auto argType = argOptions->Get(str_type)->ToString();
-				if (argType->StrictEquals(str_udp4)) {
-					info.GetReturnValue().Set(str_udp4);
-					return;
-				}
-				else if (argType->StrictEquals(str_udp6)) {
-					info.GetReturnValue().Set(str_udp6);
-					return;
-				}
-			}
-			info.GetReturnValue().SetNull();
-			return;
+			*/
 		});
 
 		/*
@@ -164,31 +133,9 @@ namespace {
 		LPFN_RIORESIZEREQUESTQUEUE    RIOResizeRequestQueue;
 
 
-		dgram.createSocket(options[, callback]) or dgram.createSocket(type[, callback])
-		UDP / Datagram Sockets
-		Class : dgram.Socket
-			Event : 'close'
-			Event : 'error'
-			Event : 'listening'
-			Event : 'message'
-			socket.addMembership(multicastAddress[, multicastInterface])
-			socket.address()
-			socket.bind([port][, address][, callback])
-			socket.bind(options[, callback])
-			socket.close([callback])
-			socket.dropMembership(multicastAddress[, multicastInterface])
-			socket.ref()
-			socket.send(msg, [offset, length, ] port, address[, callback])
-			socket.setBroadcast(flag)
-			socket.setMulticastLoopback(flag)
-			socket.setMulticastTTL(ttl)
-			socket.setTTL(ttl)
-			socket.unref()
-			Change to asynchronous socket.bind() behavior
-			dgram module functions
-
-		Networking::Adapter::Init(isolate);
 		*/
+#endif
+
 	}
 
 	NODE_MODULE(addon, Init)
